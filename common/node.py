@@ -7,6 +7,9 @@ node.py
 [MILESTONE 4 - Distributed Algorithms and Coordination] (Lamport clock + Bully election)
 [MILESTONE 5 - Distributed Transactions] (2PC participant: prepare/commit/abort)
 [MILESTONE 6 - Concurrency and Deadlock Management] (per-node lock manager)
+[MILESTONE 7 - Fault Tolerance and Recovery] (fault-injection hooks + service health probe)
+[MILESTONE 9 - Transparency] (a versioned key-value "subscriber store" with two wire formats)
+[MILESTONE 10 - Naming and Process Management] (name tables, hosted-resource set, long-running processes)
 
 Defines Node, the fundamental unit of the Distributed 5G/6G Network
 Service Platform. Each Node:
@@ -31,13 +34,39 @@ Node types in Theme 1 (Distributed 5G/6G Network Service Platform):
 
 import time
 import random
+import threading
 from multiprocessing import Process as OSProcess
 
 from common.resource_manager import ResourceManager
-from common.process_manager import ProcessManager
+from common.process_manager import ProcessManager, Process, ProcessState
 from common.communication import MessageServer, send_message
 from common.coordination import LamportClock
 from common.lock_manager import LockManager
+from common.integrity import task_checksum
+
+
+# ---- [M9] LEGACY wire format: "field=t:value;field=t:value" (t = s/i/f/b type tag) ----
+def _encode_legacy(value: dict) -> str:
+    parts = []
+    for k, v in value.items():
+        if isinstance(v, bool):
+            parts.append(f"{k}=b:{1 if v else 0}")
+        elif isinstance(v, int):
+            parts.append(f"{k}=i:{v}")
+        elif isinstance(v, float):
+            parts.append(f"{k}=f:{v!r}")
+        else:
+            parts.append(f"{k}=s:{v}")
+    return ";".join(parts)
+
+
+def _decode_legacy(payload: str) -> dict:
+    out = {}
+    for part in filter(None, payload.split(";")):
+        k, rest = part.split("=", 1)
+        t, v = rest.split(":", 1)
+        out[k] = {"b": lambda x: x == "1", "i": int, "f": float, "s": str}[t](v)
+    return out
 
 
 class Node:
@@ -58,6 +87,15 @@ class Node:
         self.current_leader = None                  # [M4] last-known elected coordinator
         self.lock_manager = LockManager()            # [M6] per-node resource lock table
         self.transaction_log = {}                     # [M5] tx_id -> {"state":..., "reservation":...}
+        self.kv = {}                                    # [M9] key -> (value, version): the replicated subscriber store
+        self.kv_legacy_only = False                      # [M9] True = this node only speaks the LEGACY wire format
+        self.kv_lock = threading.Lock()
+        self.hosted = set()                              # [M10] names of resources physically hosted HERE (the truth)
+        self.name_tables = {"central": {}, "zone": {}}   # [M10] name -> location tables this node serves as a name server
+        self.referrals = {}                              # [M10] prefix -> zone-server node (used when this node is the root)
+        self.running_procs = {}                          # [M10] name -> Process (long-running managed processes)
+        self.fault_mode = "none"                       # [M7] none|omission|delay|service_down|byzantine
+        self.fault_params = {}                          # [M7] parameters for the active fault
         self.metrics = {
             "tasks_received": 0,
             "tasks_completed": 0,
@@ -76,6 +114,33 @@ class Node:
         # Lamport's rule (local_clock = max(local, received) + 1), giving a
         # consistent logical event order across the whole distributed system.
         self.lamport_clock.update(message.get("lamport_ts", 0))
+
+        # [M7] Fault-injection CONTROL messages are exempt from the faults they
+        # control -- otherwise a node with an active fault could never be told to stop.
+        if msg_type == "fault_inject":
+            self.fault_mode = message.get("mode", "none")
+            self.fault_params = message.get("params", {})
+            return {"status": "ok", "node": self.name, "fault_mode": self.fault_mode}
+        if msg_type == "fault_clear":
+            self.fault_mode, self.fault_params = "none", {}
+            return {"status": "ok", "node": self.name, "fault_mode": "none"}
+
+        # [M7] Apply an active fault to every OTHER message (including heartbeats,
+        # so the failure detector genuinely experiences the fault).
+        if self.fault_mode == "omission":
+            # Receives the message but never answers in time (an OMISSION failure).
+            if random.random() < self.fault_params.get("probability", 1.0):
+                time.sleep(self.fault_params.get("hold_s", 3.0))
+                return {"status": "omitted", "node": self.name}
+        elif self.fault_mode == "delay":
+            # Slow / degraded link (a COMMUNICATION failure).
+            time.sleep(self.fault_params.get("delay_ms", 400) / 1000.0)
+
+        # [M7] Service-level health probe: distinguishes "node is alive" from
+        # "the SERVICE on this node is actually working" (a SERVICE failure).
+        if msg_type == "service_health":
+            ok = self.fault_mode != "service_down"
+            return {"status": "ok" if ok else "service_unavailable", "node": self.name}
 
         if msg_type == "ping":
             return {"status": "ok", "node": self.name, "node_type": self.node_type,
@@ -135,7 +200,137 @@ class Node:
             self.lock_manager.mark_victim(message["tx_id"])
             return {"status": "marked", "node": self.name}
 
+        ext = self._handle_ext(msg_type, message)
+        if ext is not None:
+            return ext
+
         return {"status": "error", "error": f"unknown message type '{msg_type}'"}
+
+    # ---------- [MILESTONES 9 & 10] key-value store, naming, managed processes ----------
+
+    def _handle_ext(self, msg_type: str, m: dict):
+        # ---- [M9] key-value subscriber store (data plane: two wire formats) ----
+        if msg_type == "kv_configure":
+            self.kv_legacy_only = bool(m.get("legacy_only", False))
+            return {"status": "ok", "node": self.name, "legacy_only": self.kv_legacy_only}
+        if msg_type == "kv_capabilities":
+            return {"status": "ok", "node": self.name,
+                    "formats": ["legacy"] if self.kv_legacy_only else ["native", "legacy"]}
+        if msg_type in ("kv_put", "kv_put_legacy"):
+            legacy = msg_type == "kv_put_legacy"
+            if self.kv_legacy_only and not legacy:
+                return {"status": "unsupported_format", "node": self.name}
+            value = _decode_legacy(m["payload"]) if legacy else m["value"]
+            with self.kv_lock:
+                cur = self.kv.get(m["key"])
+                applied = cur is None or m["version"] > cur[1]
+                if applied:
+                    self.kv[m["key"]] = (value, m["version"])
+            return {"status": "ok", "node": self.name, "applied": applied}
+        if msg_type in ("kv_get", "kv_get_legacy"):
+            legacy = msg_type == "kv_get_legacy"
+            if self.kv_legacy_only and not legacy:
+                return {"status": "unsupported_format", "node": self.name}
+            with self.kv_lock:
+                cur = self.kv.get(m["key"])
+            if cur is None:
+                return {"status": "ok", "node": self.name, "found": False}
+            out = {"status": "ok", "node": self.name, "found": True, "version": cur[1]}
+            if legacy:
+                out["payload"] = _encode_legacy(cur[0])
+            else:
+                out["value"] = cur[0]
+            return out
+        # Management plane (replication / repair / migration): uniform on every node.
+        if msg_type == "kv_dump":
+            with self.kv_lock:
+                keys = sorted(self.kv)
+                chunk = keys[m.get("offset", 0): m.get("offset", 0) + m["limit"]] if "limit" in m else keys
+                items = {k: [self.kv[k][0], self.kv[k][1]] for k in chunk}
+            return {"status": "ok", "node": self.name, "items": items, "total": len(keys)}
+        if msg_type == "kv_load":
+            applied = 0
+            with self.kv_lock:
+                for k, (v, ver) in m["items"].items():
+                    cur = self.kv.get(k)
+                    if cur is None or ver > cur[1]:
+                        self.kv[k] = (v, ver)
+                        applied += 1
+            return {"status": "ok", "node": self.name, "applied": applied}
+        if msg_type == "kv_clear":
+            with self.kv_lock:
+                self.kv.clear()
+            return {"status": "ok", "node": self.name}
+
+        # ---- [M10] naming ----
+        if msg_type == "name_host":
+            self.hosted.update(m.get("add", []))
+            self.hosted.difference_update(m.get("remove", []))
+            return {"status": "ok", "node": self.name, "hosted": len(self.hosted)}
+        if msg_type == "name_query":                       # used by BROADCAST resolution
+            return {"status": "ok", "node": self.name, "hosted": m["name"] in self.hosted}
+        if msg_type == "name_register":
+            self.name_tables[m["table"]].update(m["entries"])
+            return {"status": "ok", "node": self.name, "size": len(self.name_tables[m["table"]])}
+        if msg_type == "name_unregister":
+            for n in m["names"]:
+                self.name_tables[m["table"]].pop(n, None)
+            return {"status": "ok", "node": self.name}
+        if msg_type == "name_lookup":                       # a NAME SERVER answering a lookup
+            tbl = self.name_tables[m["table"]]
+            if m["name"] in tbl:
+                return {"status": "found", "node": self.name, "location": tbl[m["name"]]}
+            best = None
+            for prefix in self.referrals:                   # root server: longest-prefix referral
+                if m["name"].startswith(prefix) and (best is None or len(prefix) > len(best)):
+                    best = prefix
+            if best is not None:
+                return {"status": "referral", "node": self.name, "server": self.referrals[best], "prefix": best}
+            return {"status": "not_found", "node": self.name}
+        if msg_type == "name_set_referrals":
+            self.referrals = dict(m["referrals"])
+            return {"status": "ok", "node": self.name}
+        if msg_type == "name_reset":
+            self.hosted.clear()
+            self.name_tables = {"central": {}, "zone": {}}
+            self.referrals = {}
+            return {"status": "ok", "node": self.name}
+
+        # ---- [M10] long-running managed processes ----
+        if msg_type == "proc_start":
+            spec, reserved_tx = m["spec"], m.get("reserved_tx")
+            if reserved_tx is not None:
+                entry = self.transaction_log.get(reserved_tx)
+                if entry is None or entry["state"] != "committed":
+                    return {"status": "rejected", "node": self.name, "reason": "reservation_not_committed"}
+            proc = Process(name=m["name"], service_class=spec.get("service_class", "eMBB"),
+                           cpu_required=spec["cpu"], memory_required=spec["memory"],
+                           bandwidth_required=spec["bandwidth"], work_units=spec.get("work_units", 0))
+            if reserved_tx is None:
+                if not self.resource_manager.allocate(str(proc.pid), proc.cpu_required,
+                                                      proc.memory_required, proc.bandwidth_required):
+                    return {"status": "rejected", "node": self.name, "reason": "insufficient_resources"}
+            proc.state = ProcessState.RUNNING
+            proc.started_at = time.time()
+            proc.reserved_tx = reserved_tx
+            self.process_manager.all_processes[proc.pid] = proc
+            self.running_procs[m["name"]] = proc
+            return {"status": "started", "node": self.name, "pid": proc.pid}
+        if msg_type == "proc_terminate":
+            proc = self.running_procs.pop(m["name"], None)
+            if proc is None:
+                return {"status": "not_found", "node": self.name}
+            if getattr(proc, "reserved_tx", None) is None:      # group-reserved processes are freed by tx_release
+                self.resource_manager.release(str(proc.pid), proc.cpu_required,
+                                              proc.memory_required, proc.bandwidth_required)
+            proc.state = ProcessState.TERMINATED
+            proc.finished_at = time.time()
+            return {"status": "terminated", "node": self.name}
+        if msg_type == "proc_status":
+            return {"status": "running" if m["name"] in self.running_procs else "unknown", "node": self.name}
+        if msg_type == "proc_list":
+            return {"status": "ok", "node": self.name, "running": sorted(self.running_procs)}
+        return None
 
     # ---------- [MILESTONE 5] Two-Phase Commit participant handlers ----------
 
@@ -201,6 +396,8 @@ class Node:
             return {"status": "dropped", "node": self.name}
 
         task = message["task"]
+        if self.fault_mode == "service_down":
+            return {"status": "service_unavailable", "node": self.name}
         proc = self.process_manager.create_process(
             name=task["name"], service_class=task.get("service_class", "eMBB"),
             cpu=task["cpu"], memory=task["memory"], bandwidth=task["bandwidth"],
@@ -223,9 +420,12 @@ class Node:
         latency_ms = (time.time() - t_recv) * 1000.0
         self.metrics["task_latencies_ms"].append(latency_ms)
 
+        result = task_checksum(task)
+        if self.fault_mode == "byzantine":
+            result ^= 0xDEADBEEF   # [M7] a Byzantine node answers confidently, but WRONGLY
         return {
             "status": "completed", "node": self.name, "node_type": self.node_type,
-            "pid": proc.pid, "server_latency_ms": round(latency_ms, 3),
+            "pid": proc.pid, "server_latency_ms": round(latency_ms, 3), "result": result,
         }
 
     def _metrics_snapshot(self) -> dict:
