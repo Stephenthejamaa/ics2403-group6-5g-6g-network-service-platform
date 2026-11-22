@@ -1,0 +1,108 @@
+{
+    "milestone": 9,
+    "title": "Transparency and Reliability",
+    "tests": {
+        "access_transparency": {
+            "logical_resource": "/edge/session/service-1",
+            "successful": true,
+            "response": {
+                "logical_resource": "/edge/session/service-1",
+                "mode": "single",
+                "resolved": true,
+                "outcome": {
+                    "ok": true,
+                    "node": "edge-1",
+                    "result": 643251503,
+                    "correct": true,
+                    "latency_ms": 11.403,
+                    "attempts": 1
+                }
+            }
+        },
+        "location_transparency": {
+            "logical_resource": "/edge/session/service-1",
+            "resolved_location": "edge-1",
+            "successful": true
+        },
+        "replication_transparency": {
+            "replicas": [
+                "edge-1",
+                "edge-2"
+            ],
+            "successful": true,
+            "response": {
+                "logical_resource": "/edge/session/service-1",
+                "mode": "quorum",
+                "resolved": true,
+                "outcome": {
+                    "ok": true,
+                    "node": null,
+                    "result": 436914472,
+                    "correct": true,
+                    "latency_ms": 97.496,
+                    "attempts": 2,
+                    "dissenters": []
+                }
+            }
+        },
+        "migration_transparency": {
+            "migration": {
+                "logical_resource": "/edge/session/service-1",
+                "old_location": "edge-1",
+                "new_location": "ran-1",
+                "updated": true,
+                "update_exchanges": 1,
+                "resolved_location_after_update": "ran-1"
+            },
+            "resolved_location_after_migration": "ran-1",
+            "access_after_migration": {
+                "logical_resource": "/edge/session/service-1",
+                "mode": "single",
+                "resolved": true,
+                "outcome": {
+                    "ok": true,
+                    "node": "ran-1",
+                    "result": 643251503,
+                    "correct": true,
+                    "latency_ms": 12.899,
+                    "attempts": 1
+                }
+            },
+            "successful": true
+        },
+        "failure_transparency": {
+            "failed_node": "edge-1",
+            "failure_detected": true,
+            "failover_result": {
+                "logical_resource": "/edge/session/failover-1",
+                "mode": "failover",
+                "resolved": true,
+                "outcome": {
+                    "ok": true,
+                    "node": "edge-2",
+                    "result": 436914472,
+                    "correct": true,
+                    "latency_ms": 106.27,
+                    "attempts": 2
+                }
+            },
+            "successful": true,
+            "detector_events": [
+                [
+                    1795342012.5873039,
+                    "edge-1",
+                    "suspected",
+                    "service_failure"
+                ]
+            ]
+        }
+    },
+    "summary": {
+        "access_transparency": true,
+        "location_transparency": true,
+        "replication_transparency": true,
+        "migration_transparency": true,
+        "failure_transparency": true
+    },
+    "all_tests_passed": true
+}

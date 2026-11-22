@@ -1,0 +1,400 @@
+{
+    "milestone": 10,
+    "title": "Naming and Distributed Process Management",
+    "topology_nodes": 5,
+    "naming_schemes": {
+        "10": {
+            "static_map": {
+                "lookups": 10,
+                "first_pass_successes": 10,
+                "first_pass_average_latency_ms": 0.002,
+                "first_pass_max_latency_ms": 0.0057,
+                "first_pass_exchanges": 0,
+                "first_pass_exchanges_per_lookup": 0.0,
+                "repeated_successes": 10,
+                "repeated_average_latency_ms": 0.0012,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            },
+            "broadcast": {
+                "lookups": 10,
+                "first_pass_successes": 10,
+                "first_pass_average_latency_ms": 16.2817,
+                "first_pass_max_latency_ms": 30.8521,
+                "first_pass_exchanges": 50,
+                "first_pass_exchanges_per_lookup": 5.0,
+                "repeated_successes": 10,
+                "repeated_average_latency_ms": 11.1761,
+                "repeated_exchanges": 50,
+                "repeated_exchanges_per_lookup": 5.0
+            },
+            "name_server": {
+                "lookups": 10,
+                "first_pass_successes": 10,
+                "first_pass_average_latency_ms": 3.7944,
+                "first_pass_max_latency_ms": 4.5754,
+                "first_pass_exchanges": 10,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 10,
+                "repeated_average_latency_ms": 3.7545,
+                "repeated_exchanges": 10,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "prefix_table": {
+                "lookups": 10,
+                "first_pass_successes": 10,
+                "first_pass_average_latency_ms": 6.1738,
+                "first_pass_max_latency_ms": 27.5018,
+                "first_pass_exchanges": 10,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 10,
+                "repeated_average_latency_ms": 5.9056,
+                "repeated_exchanges": 10,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "dns_style": {
+                "lookups": 10,
+                "first_pass_successes": 10,
+                "first_pass_average_latency_ms": 5.8113,
+                "first_pass_max_latency_ms": 9.9985,
+                "first_pass_exchanges": 13,
+                "first_pass_exchanges_per_lookup": 1.3,
+                "repeated_successes": 10,
+                "repeated_average_latency_ms": 0.0044,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            }
+        },
+        "50": {
+            "static_map": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 0.0009,
+                "first_pass_max_latency_ms": 0.0028,
+                "first_pass_exchanges": 0,
+                "first_pass_exchanges_per_lookup": 0.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 0.0008,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            },
+            "broadcast": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 12.3355,
+                "first_pass_max_latency_ms": 27.8803,
+                "first_pass_exchanges": 100,
+                "first_pass_exchanges_per_lookup": 5.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 10.4962,
+                "repeated_exchanges": 100,
+                "repeated_exchanges_per_lookup": 5.0
+            },
+            "name_server": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.0116,
+                "first_pass_max_latency_ms": 5.3059,
+                "first_pass_exchanges": 20,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 3.5987,
+                "repeated_exchanges": 20,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "prefix_table": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 3.5551,
+                "first_pass_max_latency_ms": 4.04,
+                "first_pass_exchanges": 20,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 3.552,
+                "repeated_exchanges": 20,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "dns_style": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.8628,
+                "first_pass_max_latency_ms": 17.3627,
+                "first_pass_exchanges": 23,
+                "first_pass_exchanges_per_lookup": 1.15,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 0.0021,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            }
+        },
+        "100": {
+            "static_map": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 0.0011,
+                "first_pass_max_latency_ms": 0.004,
+                "first_pass_exchanges": 0,
+                "first_pass_exchanges_per_lookup": 0.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 0.0012,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            },
+            "broadcast": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 11.7872,
+                "first_pass_max_latency_ms": 27.2467,
+                "first_pass_exchanges": 100,
+                "first_pass_exchanges_per_lookup": 5.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 11.3362,
+                "repeated_exchanges": 100,
+                "repeated_exchanges_per_lookup": 5.0
+            },
+            "name_server": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.3555,
+                "first_pass_max_latency_ms": 13.944,
+                "first_pass_exchanges": 20,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 3.7652,
+                "repeated_exchanges": 20,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "prefix_table": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.1114,
+                "first_pass_max_latency_ms": 5.5361,
+                "first_pass_exchanges": 20,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 4.5022,
+                "repeated_exchanges": 20,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "dns_style": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.0727,
+                "first_pass_max_latency_ms": 7.663,
+                "first_pass_exchanges": 23,
+                "first_pass_exchanges_per_lookup": 1.15,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 0.002,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            }
+        },
+        "250": {
+            "static_map": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 0.0014,
+                "first_pass_max_latency_ms": 0.0052,
+                "first_pass_exchanges": 0,
+                "first_pass_exchanges_per_lookup": 0.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 0.0009,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            },
+            "broadcast": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 12.2419,
+                "first_pass_max_latency_ms": 25.3279,
+                "first_pass_exchanges": 100,
+                "first_pass_exchanges_per_lookup": 5.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 14.6379,
+                "repeated_exchanges": 100,
+                "repeated_exchanges_per_lookup": 5.0
+            },
+            "name_server": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.0873,
+                "first_pass_max_latency_ms": 5.628,
+                "first_pass_exchanges": 20,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 3.5167,
+                "repeated_exchanges": 20,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "prefix_table": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.3115,
+                "first_pass_max_latency_ms": 17.3207,
+                "first_pass_exchanges": 20,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 4.6004,
+                "repeated_exchanges": 20,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "dns_style": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 6.7375,
+                "first_pass_max_latency_ms": 30.6075,
+                "first_pass_exchanges": 23,
+                "first_pass_exchanges_per_lookup": 1.15,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 0.0023,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            }
+        },
+        "500": {
+            "static_map": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 0.0013,
+                "first_pass_max_latency_ms": 0.0044,
+                "first_pass_exchanges": 0,
+                "first_pass_exchanges_per_lookup": 0.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 0.001,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            },
+            "broadcast": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 13.2367,
+                "first_pass_max_latency_ms": 29.8077,
+                "first_pass_exchanges": 100,
+                "first_pass_exchanges_per_lookup": 5.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 11.508,
+                "repeated_exchanges": 100,
+                "repeated_exchanges_per_lookup": 5.0
+            },
+            "name_server": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.4639,
+                "first_pass_max_latency_ms": 14.8492,
+                "first_pass_exchanges": 20,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 3.5207,
+                "repeated_exchanges": 20,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "prefix_table": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 3.6062,
+                "first_pass_max_latency_ms": 4.9181,
+                "first_pass_exchanges": 20,
+                "first_pass_exchanges_per_lookup": 1.0,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 3.5401,
+                "repeated_exchanges": 20,
+                "repeated_exchanges_per_lookup": 1.0
+            },
+            "dns_style": {
+                "lookups": 20,
+                "first_pass_successes": 20,
+                "first_pass_average_latency_ms": 4.3121,
+                "first_pass_max_latency_ms": 7.7796,
+                "first_pass_exchanges": 23,
+                "first_pass_exchanges_per_lookup": 1.15,
+                "repeated_successes": 20,
+                "repeated_average_latency_ms": 0.0029,
+                "repeated_exchanges": 0,
+                "repeated_exchanges_per_lookup": 0.0
+            }
+        }
+    },
+    "scalability": {
+        "measured_name_counts": [
+            10,
+            50,
+            100,
+            250,
+            500
+        ],
+        "measured_lookup_sample_per_size": 20,
+        "large_scale_model": {
+            "nodes": 500,
+            "clients": 5000,
+            "lookups": 1000,
+            "resource_moves": 10,
+            "dns_hit_rate_assumption": 0.7,
+            "static_map": 50000,
+            "broadcast": 500000,
+            "name_server": 1010,
+            "prefix_table": 1010,
+            "dns_style": 310.00000000000006
+        }
+    },
+    "process_management": {
+        "elected_coordinator": "cloud-1",
+        "election_rounds": [
+            {
+                "initiator": "edge-1",
+                "declared_leader": null,
+                "messages_sent": 4,
+                "higher_peers_contacted": 4,
+                "responses_received": 4,
+                "elapsed_ms": 19.23
+            },
+            {
+                "initiator": "edge-2",
+                "declared_leader": null,
+                "messages_sent": 3,
+                "higher_peers_contacted": 3,
+                "responses_received": 3,
+                "elapsed_ms": 8.366
+            },
+            {
+                "initiator": "ran-1",
+                "declared_leader": null,
+                "messages_sent": 2,
+                "higher_peers_contacted": 2,
+                "responses_received": 2,
+                "elapsed_ms": 6.868
+            },
+            {
+                "initiator": "core-1",
+                "declared_leader": null,
+                "messages_sent": 1,
+                "higher_peers_contacted": 1,
+                "responses_received": 1,
+                "elapsed_ms": 5.937
+            },
+            {
+                "initiator": "cloud-1",
+                "declared_leader": "cloud-1",
+                "messages_sent": 5,
+                "higher_peers_contacted": 0,
+                "responses_received": 0,
+                "elapsed_ms": 39.891
+            }
+        ],
+        "coordination_successful": true,
+        "logical_name": "/edge/z2/qos/0",
+        "resolved_node": "edge-1",
+        "task_name": "urllc-task-0",
+        "service_class": "URLLC",
+        "pid": 1,
+        "task_response_status": "completed",
+        "process_found_in_table": true,
+        "final_process_state": "TERMINATED",
+        "process_lifecycle_successful": true
+    },
+    "summary": {
+        "all_five_naming_schemes_passed": true,
+        "coordination_passed": true,
+        "process_lifecycle_passed": true,
+        "all_tests_passed": true
+    }
+}

@@ -38,6 +38,7 @@ from common.process_manager import ProcessManager
 from common.communication import MessageServer, send_message
 from common.coordination import LamportClock
 from common.lock_manager import LockManager
+from common.integrity import task_checksum
 
 
 class Node:
@@ -58,6 +59,15 @@ class Node:
         self.current_leader = None                  # [M4] last-known elected coordinator
         self.lock_manager = LockManager()            # [M6] per-node resource lock table
         self.transaction_log = {}                     # [M5] tx_id -> {"state":..., "reservation":...}
+
+        # [M7/M9] Fault injection and recovery state
+        self.fault_mode = None
+        self.fault_params = {}
+
+        # [M10] Distributed logical naming state
+        self.hosted_names = set()
+        self.name_tables = {"central": {}, "zone": {}}
+        self.name_referrals = {}
         self.metrics = {
             "tasks_received": 0,
             "tasks_completed": 0,
@@ -76,6 +86,98 @@ class Node:
         # Lamport's rule (local_clock = max(local, received) + 1), giving a
         # consistent logical event order across the whole distributed system.
         self.lamport_clock.update(message.get("lamport_ts", 0))
+
+        # ---- [MILESTONE 7/9] Fault injection and service health ----
+        if msg_type == "fault_inject":
+            mode = message.get("mode")
+            allowed = ("omission", "delay", "service_down", "byzantine")
+            if mode not in allowed:
+                return {"status": "error", "error": "unsupported transient fault"}
+            self.fault_mode = mode
+            self.fault_params = message.get("params") or {}
+            return {"status": "ok", "node": self.name, "fault": mode}
+
+        if msg_type == "fault_clear":
+            self.fault_mode = None
+            self.fault_params = {}
+            return {"status": "ok", "node": self.name, "fault": "cleared"}
+
+        if msg_type == "service_health":
+            if self.fault_mode == "service_down":
+                return {"status": "error", "node": self.name, "service": "unavailable"}
+            return {"status": "ok", "node": self.name, "service": "available"}
+
+        # ---- [MILESTONE 10] Distributed logical naming ----
+        if msg_type == "name_reset":
+            self.hosted_names.clear()
+            self.name_tables = {"central": {}, "zone": {}}
+            self.name_referrals.clear()
+            return {"status": "ok", "node": self.name}
+
+        if msg_type == "name_host":
+            for name in message.get("add", []):
+                self.hosted_names.add(name)
+            for name in message.get("remove", []):
+                self.hosted_names.discard(name)
+            return {"status": "ok", "node": self.name}
+
+        if msg_type == "name_register":
+            table = message.get("table")
+            if table not in self.name_tables:
+                return {"status": "error", "error": "unknown naming table"}
+            entries = message.get("entries", {})
+            if not isinstance(entries, dict):
+                return {"status": "error", "error": "entries must be a dictionary"}
+            self.name_tables[table].update(entries)
+            return {"status": "ok", "node": self.name, "registered": len(entries)}
+
+        if msg_type == "name_set_referrals":
+            referrals = message.get("referrals", {})
+            if not isinstance(referrals, dict):
+                return {"status": "error", "error": "referrals must be a dictionary"}
+            self.name_referrals = dict(referrals)
+            return {"status": "ok", "node": self.name}
+
+        if msg_type == "name_query":
+            name = message.get("name")
+            return {
+                "status": "ok",
+                "node": self.name,
+                "hosted": name in self.hosted_names,
+            }
+
+        if msg_type == "name_lookup":
+            table = message.get("table")
+            name = message.get("name")
+            if table not in self.name_tables:
+                return {"status": "error", "error": "unknown naming table"}
+
+            location = self.name_tables[table].get(name)
+            if location is not None:
+                return {"status": "found", "node": self.name, "location": location}
+
+            if table == "zone" and isinstance(name, str):
+                parts = name.split("/")
+                prefix = "/" + parts[1] if len(parts) > 2 and parts[1] else None
+                server = self.name_referrals.get(prefix) if prefix else None
+                if server:
+                    return {
+                        "status": "referral",
+                        "node": self.name,
+                        "prefix": prefix,
+                        "server": server,
+                    }
+
+            return {"status": "not_found", "node": self.name}
+
+        if msg_type == "name_unregister":
+            table = message.get("table")
+            if table not in self.name_tables:
+                return {"status": "error", "error": "unknown naming table"}
+            for name in message.get("names", []):
+                self.name_tables[table].pop(name, None)
+            return {"status": "ok", "node": self.name}
+
 
         if msg_type == "ping":
             return {"status": "ok", "node": self.name, "node_type": self.node_type,
@@ -191,16 +293,36 @@ class Node:
         entry["state"] = "released"
         return {"status": "released", "node": self.name}
 
-    def _handle_task_request(self, message: dict) -> dict:
+    def _handle_task_request(self, message: dict) -> dict | None:
         t_recv = time.time()
         self.metrics["tasks_received"] += 1
 
-        # Simulated packet loss on this node's inbound link (Milestone 2 reliability metric)
+        # Preserve the existing simulated packet-loss behavior.
         if random.random() < self.packet_loss_rate:
             self.metrics["tasks_dropped"] += 1
             return {"status": "dropped", "node": self.name}
 
         task = message["task"]
+
+        # [MILESTONE 7] Omission: receive the request but send no response.
+        if self.fault_mode == "omission":
+            self.metrics["tasks_dropped"] += 1
+            return None
+
+        # [MILESTONE 7] Service failure: the node is alive, but its service
+        # cannot accept task requests.
+        if self.fault_mode == "service_down":
+            return {
+                "status": "service_unavailable",
+                "node": self.name,
+            }
+
+        # [MILESTONE 7] Delay: simulate a slow node. The default delay is
+        # longer than the replicated client's normal request timeout.
+        if self.fault_mode == "delay":
+            delay_s = float(self.fault_params.get("seconds", 0.5))
+            time.sleep(max(0.0, min(delay_s, 5.0)))
+
         proc = self.process_manager.create_process(
             name=task["name"], service_class=task.get("service_class", "eMBB"),
             cpu=task["cpu"], memory=task["memory"], bandwidth=task["bandwidth"],
@@ -210,11 +332,14 @@ class Node:
         proc, allocated = self.process_manager.dispatch_next()
         if not allocated:
             self.metrics["tasks_rejected_no_resources"] += 1
-            return {"status": "rejected", "reason": "insufficient_resources", "node": self.name,
-                     "pid": proc.pid if proc else None}
+            return {
+                "status": "rejected",
+                "reason": "insufficient_resources",
+                "node": self.name,
+                "pid": proc.pid if proc else None,
+            }
 
-        # Simulate execution time: work_units translated into real (short) sleep,
-        # scaled down so the whole distributed system runs quickly for grading/demo.
+        # Simulate execution time, scaled down for quick experiments.
         exec_seconds = proc.work_units / 1000.0
         time.sleep(exec_seconds)
 
@@ -223,9 +348,21 @@ class Node:
         latency_ms = (time.time() - t_recv) * 1000.0
         self.metrics["task_latencies_ms"].append(latency_ms)
 
+        # Healthy replicas return the same deterministic checksum.
+        result = task_checksum(task)
+
+        # [MILESTONE 7] Byzantine behavior: return a plausible but incorrect
+        # result while still reporting task completion.
+        if self.fault_mode == "byzantine":
+            result ^= 1
+
         return {
-            "status": "completed", "node": self.name, "node_type": self.node_type,
-            "pid": proc.pid, "server_latency_ms": round(latency_ms, 3),
+            "status": "completed",
+            "node": self.name,
+            "node_type": self.node_type,
+            "pid": proc.pid,
+            "result": result,
+            "server_latency_ms": round(latency_ms, 3),
         }
 
     def _metrics_snapshot(self) -> dict:

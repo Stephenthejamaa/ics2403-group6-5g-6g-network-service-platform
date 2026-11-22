@@ -102,7 +102,8 @@ class MessageServer:
             with conn:
                 message = _recv_framed(conn)
                 reply = self.handler(message)
-                _send_framed(conn, reply)
+                if reply is not None:
+                    _send_framed(conn, reply)
         except Exception as e:
             try:
                 _send_framed(conn, {"status": "error", "error": str(e)})
