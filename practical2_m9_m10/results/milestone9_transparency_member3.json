@@ -1,0 +1,315 @@
+{
+  "parameters": {
+    "replicas": [
+      "edge-1",
+      "edge-2",
+      "ran-1"
+    ],
+    "legacy_node": "ran-1",
+    "migration_sizes": [
+      2000,
+      10000,
+      40000
+    ],
+    "workload_threads": 4,
+    "workload_interval_s": 0.01,
+    "hot_keys": 1000,
+    "live_copy_rate_keys_per_s": 25000,
+    "stall_threshold_ms": 20.0,
+    "failure_rate_hz": 40,
+    "failure_stream_s": 7.0,
+    "crash_at_s": 1.5,
+    "restart_at_s": 4.0
+  },
+  "access": {
+    "physical_addressing": {
+      "edge-1": {
+        "wire_format": "native",
+        "writes_ok": 100,
+        "of": 100
+      },
+      "edge-2": {
+        "wire_format": "native",
+        "writes_ok": 100,
+        "of": 100
+      },
+      "ran-1": {
+        "wire_format": "legacy only",
+        "writes_ok": 0,
+        "of": 100
+      }
+    },
+    "transparent": {
+      "app": {
+        "written": 100,
+        "read_back_correct": 100,
+        "served_by": {
+          "edge-1": 100
+        }
+      },
+      "per_replica": {
+        "edge-1": {
+          "wire_format": "native",
+          "records_correct": 100,
+          "of": 100
+        },
+        "edge-2": {
+          "wire_format": "native",
+          "records_correct": 100,
+          "of": 100
+        },
+        "ran-1": {
+          "wire_format": "legacy",
+          "records_correct": 100,
+          "of": 100
+        }
+      },
+      "format_translations": 200,
+      "divergent_keys": 0
+    }
+  },
+  "location": {
+    "machine_names_in_application_code": 0,
+    "before_relocation": {
+      "written": 60,
+      "read_back_correct": 60,
+      "served_by": {
+        "edge-2": 60
+      }
+    },
+    "relocation": {
+      "seconds": 0.0007131099700927734,
+      "keys": 60,
+      "keys_applied": 60
+    },
+    "after_relocation": {
+      "written": 60,
+      "read_back_correct": 60,
+      "served_by": {
+        "cloud-1": 60
+      }
+    },
+    "directory_lookup_us": 0.53
+  },
+  "replication": {
+    "configs": {
+      "direct physical access (no transparency)": {
+        "copies": 1,
+        "put_mean_ms": 0.086,
+        "put_p95_ms": 0.143,
+        "get_mean_ms": 0.083,
+        "get_p95_ms": 0.139,
+        "messages_per_put": 1,
+        "messages_per_get": 1.0,
+        "divergent_keys": 0
+      },
+      "transparent, 1 copy (native format)": {
+        "copies": 1,
+        "put_mean_ms": 0.093,
+        "put_p95_ms": 0.15,
+        "get_mean_ms": 0.088,
+        "get_p95_ms": 0.148,
+        "messages_per_put": 1,
+        "messages_per_get": 1.0,
+        "divergent_keys": 0
+      },
+      "transparent, 1 copy (legacy format)": {
+        "copies": 1,
+        "put_mean_ms": 0.097,
+        "put_p95_ms": 0.153,
+        "get_mean_ms": 0.093,
+        "get_p95_ms": 0.15,
+        "messages_per_put": 1,
+        "messages_per_get": 1.0,
+        "divergent_keys": 0
+      },
+      "transparent, 2 copies": {
+        "copies": 2,
+        "put_mean_ms": 0.246,
+        "put_p95_ms": 0.363,
+        "get_mean_ms": 0.09,
+        "get_p95_ms": 0.145,
+        "messages_per_put": 2,
+        "messages_per_get": 1.0,
+        "divergent_keys": 0
+      },
+      "transparent, 3 copies": {
+        "copies": 3,
+        "put_mean_ms": 0.411,
+        "put_p95_ms": 0.536,
+        "get_mean_ms": 0.089,
+        "get_p95_ms": 0.149,
+        "messages_per_put": 3,
+        "messages_per_get": 1.0,
+        "divergent_keys": 0
+      }
+    },
+    "concurrent_writers_divergent_keys": 0,
+    "overhead": [
+      {
+        "mechanism": "Location (directory lookup + client logic)",
+        "put_overhead_ms": 0.007,
+        "get_overhead_ms": 0.005,
+        "extra_messages_per_put": 0,
+        "extra_messages_per_get": 0,
+        "note": "compared with talking to the node directly"
+      },
+      {
+        "mechanism": "Access (legacy format translation)",
+        "put_overhead_ms": 0.004,
+        "get_overhead_ms": 0.005,
+        "extra_messages_per_put": 0,
+        "extra_messages_per_get": 0,
+        "note": "legacy node vs native node, 1 copy each"
+      },
+      {
+        "mechanism": "Replication (3 copies instead of 1)",
+        "put_overhead_ms": 0.318,
+        "get_overhead_ms": 0.001,
+        "extra_messages_per_put": 2,
+        "extra_messages_per_get": 0,
+        "note": "writes go to every copy; reads still touch only one"
+      },
+      {
+        "mechanism": "Failure masking (normal operation)",
+        "put_overhead_ms": 0.0,
+        "get_overhead_ms": 0.0,
+        "extra_messages_per_put": 0,
+        "extra_messages_per_get": 0,
+        "note": "no cost until a failure happens; then one extra attempt per affected request"
+      }
+    ]
+  },
+  "migration": [
+    {
+      "keys": 2000,
+      "mode": "stop_the_world",
+      "migration_seconds": 0.029,
+      "operations_total": 316,
+      "operations_during_migration": 11,
+      "failed_operations": 0,
+      "incorrect_reads": 0,
+      "stalled_writes": 0,
+      "max_write_latency_ms": 16.25,
+      "baseline_mean_latency_ms": 0.33,
+      "p95_latency_ms": 0.843,
+      "records_on_new_node": 2000,
+      "divergent_keys_after": 0,
+      "integrity_ok": true
+    },
+    {
+      "keys": 2000,
+      "mode": "live",
+      "migration_seconds": 0.08,
+      "operations_total": 335,
+      "operations_during_migration": 29,
+      "failed_operations": 0,
+      "incorrect_reads": 0,
+      "stalled_writes": 0,
+      "max_write_latency_ms": 1.15,
+      "baseline_mean_latency_ms": 0.351,
+      "p95_latency_ms": 0.953,
+      "records_on_new_node": 2000,
+      "divergent_keys_after": 0,
+      "integrity_ok": true
+    },
+    {
+      "keys": 10000,
+      "mode": "stop_the_world",
+      "migration_seconds": 0.1,
+      "operations_total": 320,
+      "operations_during_migration": 20,
+      "failed_operations": 0,
+      "incorrect_reads": 0,
+      "stalled_writes": 4,
+      "max_write_latency_ms": 101.18,
+      "baseline_mean_latency_ms": 0.421,
+      "p95_latency_ms": 0.979,
+      "records_on_new_node": 10000,
+      "divergent_keys_after": 0,
+      "integrity_ok": true
+    },
+    {
+      "keys": 10000,
+      "mode": "live",
+      "migration_seconds": 0.458,
+      "operations_total": 479,
+      "operations_during_migration": 173,
+      "failed_operations": 0,
+      "incorrect_reads": 0,
+      "stalled_writes": 0,
+      "max_write_latency_ms": 2.3,
+      "baseline_mean_latency_ms": 0.506,
+      "p95_latency_ms": 1.003,
+      "records_on_new_node": 10000,
+      "divergent_keys_after": 0,
+      "integrity_ok": true
+    },
+    {
+      "keys": 40000,
+      "mode": "stop_the_world",
+      "migration_seconds": 0.467,
+      "operations_total": 324,
+      "operations_during_migration": 18,
+      "failed_operations": 0,
+      "incorrect_reads": 0,
+      "stalled_writes": 4,
+      "max_write_latency_ms": 454.47,
+      "baseline_mean_latency_ms": 0.272,
+      "p95_latency_ms": 0.729,
+      "records_on_new_node": 40000,
+      "divergent_keys_after": 0,
+      "integrity_ok": true
+    },
+    {
+      "keys": 40000,
+      "mode": "live",
+      "migration_seconds": 2.005,
+      "operations_total": 1057,
+      "operations_during_migration": 747,
+      "failed_operations": 0,
+      "incorrect_reads": 0,
+      "stalled_writes": 0,
+      "max_write_latency_ms": 4.41,
+      "baseline_mean_latency_ms": 0.283,
+      "p95_latency_ms": 1.346,
+      "records_on_new_node": 40000,
+      "divergent_keys_after": 0,
+      "integrity_ok": true
+    }
+  ],
+  "failure": [
+    {
+      "client": "physical (bound to edge-1)",
+      "operations": 280,
+      "failed_operations": 100,
+      "availability": 0.6429,
+      "lost_reads": 85,
+      "stale_reads": 0,
+      "p95_latency_ms": 0.431,
+      "max_latency_ms": 1.02,
+      "restart_seconds": 0.102,
+      "keys_on_restarted_node": 36,
+      "repair_seconds": null,
+      "keys_repaired": 0,
+      "divergent_keys_after_repair": null,
+      "full_redundancy_restored_after_s": null
+    },
+    {
+      "client": "transparent (replicated + failover + repair)",
+      "operations": 280,
+      "failed_operations": 0,
+      "availability": 1.0,
+      "lost_reads": 0,
+      "stale_reads": 0,
+      "p95_latency_ms": 1.22,
+      "max_latency_ms": 3.751,
+      "restart_seconds": 0.004,
+      "keys_on_restarted_node": 200,
+      "repair_seconds": 0.001,
+      "keys_repaired": 200,
+      "divergent_keys_after_repair": 0,
+      "full_redundancy_restored_after_s": 2.505
+    }
+  ]
+}
